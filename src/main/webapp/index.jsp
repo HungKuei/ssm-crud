@@ -125,13 +125,13 @@
 	    <!-- 页头 -->
 	    <div class="row">
 			<div class="page-header">
-		  		<h1>SSM-CRUD <small>基于整合ssm-crud学生信息的增删改查</small></h1>
+		  		<h1>SSM-CRUD <small>SSM-CRUD是基于整合(Spring、SpringMVC、Mybatis，支持JSR303数据校验，PageHelper分页插件)，简单学生信息的增删改查业务</small></h1>
 			</div>
 		</div>
 		<!-- 按钮 -->
 		<div class="row">
 			<div class="col-md-4 col-md-offset-8">
-				<button class="btn btn-danger" style="float:right">删除</button>
+				<button class="btn btn-danger" id="del_stu_all_btn" style="float:right">删除</button>
 				<button class="btn btn-primary" id="add_stu_btn" style="float:right;margin-right:5px">新增</button>
 				<button class="btn btn-primary" id="query_stu_btn" style="float:right;margin-right:5px">查询</button>
 			</div>
@@ -142,7 +142,10 @@
 				<table class="table table-bordered table-hover" id="stus_table">
 					<thead>
 						<tr>
-							<th>#</th>
+							<th>
+								<input type="checkbox" id="check_all"> 全选
+							</th>
+							<th>主键</th>
 							<th>学生姓名</th>
 							<th>性别</th>
 							<th>邮箱</th>
@@ -164,7 +167,7 @@
 		</div>
 	</div>
 	<script type="text/javascript">
-		var totalPage;
+		var totalPage,currentPage;
 	    //页面加载完以后，直接发送ajax请求，拿到分页数据
 		$(function(){
 			requestPage(1);
@@ -190,19 +193,23 @@
 			var stus = result.extend.pageInfo.list;
 			$.each(stus, function(index, items){
 				//alert(items.stuName);
+				var checkBoxTd = $("<td><input type='checkbox' class='check_item' /></td>")
 				var stuIdTd = $("<td></td>").append(items.stuId);
 				var stuNameTd = $("<td></td>").append(items.stuName);
 				var genderTd = $("<td></td>").append(items.gender=='M'?"男":"女");
 				var emailTd = $("<td></td>").append(items.email);
 				var insNameTd = $("<td></td>").append(items.institute.insName);
 				var editBtn = $("<button></button>").addClass("btn btn-primary btn-sm edit_btn")
-								.append($("<span></span>").addClass("glyphicon glyphicon-pencil delete_btn")).append("编辑");
+								.append($("<span></span>").addClass("glyphicon glyphicon-pencil")).append("编辑");
 				//未编辑按钮添加id属性来表示学生的id
 				editBtn.attr("edit-id", items.stuId);
-				var delBtn = $("<button></button>").addClass("btn btn-danger btn-sm")
+				var delBtn = $("<button></button>").addClass("btn btn-danger btn-sm delete_btn")
 								.append($("<span></span>").addClass("glyphicon glyphicon-trash")).append("删除");
+				//为删除按钮自定义id属性用来表示要删除学生的Id
+				delBtn.attr("del-id", items.stuId);
 				var btnTd = $("<td></td>").append(editBtn).append(" ").append(delBtn);
-				$("<tr></tr>").append(stuIdTd)
+				$("<tr></tr>").append(checkBoxTd)
+					.append(stuIdTd)
 					.append(stuNameTd)
 					.append(genderTd)
 					.append(emailTd)
@@ -219,6 +226,7 @@
 				result.extend.pageInfo.pages +"页,总 "+ 
 				result.extend.pageInfo.total +"条记录");
 				totalPage=result.extend.pageInfo.total;
+				currentPage=result.extend.pageInfo.pageNum;
 			}
 
 		function build_page_nav(result){
@@ -309,7 +317,7 @@
 		$("#input_name").change(function(){
 			//发送ajax请求校验用户名是否可用
 			var stuName = this.value;
-			$.ajax({
+			$.ajax({        
 				url:"${basePath}/checkuser",
 				data:"stuName="+stuName,
 				type:"POST",
@@ -404,7 +412,7 @@
 			//查出学生信息并显示
 			getStu($(this).attr("edit-id"));
 			//把员工的id传递给模态框的更新按钮
-			//$("#emp_update_btn").attr("edit-id",$(this).attr("edit-id"));
+			$("#update_stu_btn").attr("edit-id",$(this).attr("edit-id"));
 			$("#stuEditModal").modal({
 				backdrop:"static"
 			});
@@ -424,7 +432,93 @@
 					$("#stuEditModal select").val([stuData.insId]);
 				}
 			});
-		}
+		};
+
+		//点击修改学生信息
+		$("#update_stu_btn").click(function(){
+			//表单数据校验
+			var email = $("#edit_email").val();
+			var regEmail = /^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$/;
+			if(!regEmail.test(email)){
+				//alert("邮箱格式不正确！");
+				show_validata_msg("#edit_email", "error", "邮箱格式不正确！");
+				return false;
+			}else{
+				show_validata_msg("edit_email", "success", "");
+			}
+			//发送ajax请求修改学生信息
+			$.ajax({
+				url:"${basePath}/stu/"+$(this).attr("edit-id"),
+				//type:"POST",
+				//data:$("#stuEditModal form").serialize()+"&_method=PUT",
+				type:"PUT",
+				data:$("#stuEditModal form").serialize(),
+				success:function(result){
+					//alert(result.msg);
+					//关闭模态框
+					$("#stuEditModal").modal("hide");
+					//回到当前页面
+					requestPage(currentPage);
+				}
+			});
+		});
+
+		//单个删除
+		$(document).on("click",".delete_btn", function(){
+			//点击删除弹出模态框
+			//alert($(this).parents("tr").find("td:eq(1)").text());
+			var stuName = $(this).parents("tr").find("td:eq(2)").text();
+			var stuId = $(this).attr("del-id");
+			if(confirm("确定删除["+ stuName +"]吗？")){
+				//确定，发送ajax请求删除
+				$.ajax({
+					url:"${basePath}/stu/"+stuId,
+					type:"DELETE",
+					success:function(result){
+						//alert(result.msg);
+						//删除成功回到本页
+						requestPage(currentPage);
+					}
+				});
+			}
+		});
+
+		//全选or全不选
+		$("#check_all").click(function(){
+			//alert($(this).prop("checked"));
+			//prop获取和修改原生的dom的属性值，attr获取和修改自定义的属性值
+			$(".check_item").prop("checked",$(this).prop("checked"));
+			$(document).on("click",".check_item",function(){
+				var flag = $(".check_item:checked").length == $(".check_item").length;
+				$("#check_all").prop("checked", flag);
+			});
+		});
+
+		//批量删除
+		$("#del_stu_all_btn").click(function(){
+			var stuNames = "";
+			var del_idstr = "";
+			$.each($(".check_item:checked"),function(){
+				//alert($(this).parents("tr").find("td:eq(2)").text());
+				stuNames += $(this).parents("tr").find("td:eq(2)").text() + ",";
+				del_idstr += $(this).parents("tr").find("td:eq(1)").text() + "-";
+			});
+			//去除多余的","和"-"
+			stuNames = stuNames.substring(0,stuNames.length-1);
+			del_idstr = del_idstr.substring(0,del_idstr.length-1);
+			if(confirm("确定删除[" + stuNames + "]吗？")){
+				//发送ajax请求删除
+				$.ajax({
+					url:"${basePath}/stu/"+del_idstr,
+					type:"DELETE",
+					success:function(result){
+						//alert(result.msg);
+						//删除成功并返回当前页面
+						requestPage(currentPage);
+					}
+				});
+			}
+		});
 	</script>
 </body>
 </html>

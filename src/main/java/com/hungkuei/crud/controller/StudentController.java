@@ -1,5 +1,6 @@
 package com.hungkuei.crud.controller;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,16 @@ import com.github.pagehelper.PageInfo;
 import com.hugkuei.crud.model.Message;
 import com.hugkuei.crud.model.Student;
 import com.hungkuei.crud.service.StudentService;
+
+/**
+ * @描述 Controller控制层
+ * @标题 StudentController.java
+ * @Package com.hungkuei.crud.controller
+ * @版本 v1.0
+ * @作者 HungKuei
+ * @日期 2018年11月19日 下午14:52:11
+ * @Copyright: 2018 by hungkuei All rights reserved.
+ */
 
 @Controller
 public class StudentController {
@@ -112,6 +123,40 @@ public class StudentController {
 	public Message getStu(@PathVariable("id")Integer id) {
 		Student student = studentService.getStus(id);
 		return Message.succeed().add("stu", student);
-		
+	}
+	
+	/**
+	 * 根据学生id修改学生信息
+	 * @param student
+	 * @return
+	 */
+	@RequestMapping(value="/stu/{stuId}", method = RequestMethod.PUT)
+	@ResponseBody
+	public Message saveStu(Student student) {
+		//System.out.println("将要修改的学生信息："+student);
+		studentService.updateStu(student);
+		return Message.succeed();
+	}
+	
+	/**
+	 * 根据学生Id单个或者批量删除学生信息
+	 * @param id
+	 * @return
+	 */
+	@RequestMapping(value="/stu/{ids}", method = RequestMethod.DELETE)
+	@ResponseBody
+	public Message deleteStuById(@PathVariable("ids") String ids) {
+		if(ids.contains("-")) {
+			List<Integer> del_ids = new ArrayList<Integer>();
+			String[] str_ids = ids.split("-");
+			for(String string : str_ids) {
+				del_ids.add(Integer.parseInt(string));
+			}
+			studentService.deleteStu(del_ids);
+		}else {
+			Integer id = Integer.parseInt(ids);
+			studentService.deleteStu(id);
+		}
+		return Message.succeed();
 	}
 }

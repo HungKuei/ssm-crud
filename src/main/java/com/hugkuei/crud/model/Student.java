@@ -78,4 +78,11 @@ public class Student {
 	public void setInstitute(Institute institute) {
 		this.institute = institute;
 	}
+
+	@Override
+	public String toString() {
+		return "Student [stuId=" + stuId + ", stuName=" + stuName + ", gender=" + gender + ", email=" + email
+				+ ", insId=" + insId + ", institute=" + institute + "]";
+	}
+	
 }
